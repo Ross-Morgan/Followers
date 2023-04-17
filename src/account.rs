@@ -18,7 +18,7 @@ pub struct User<'a> {
 }
 
 impl<'a> User<'a> {
-    pub fn new<T1: ToString, T2: ToString>(username: T1, biography: T2) -> Self {
+    pub fn new<T: ToString, U: ToString>(username: T, biography: U) -> Self {
         Self {
             username: RefCell::new(username.to_string()),
             biography: RefCell::new(biography.to_string()),
@@ -70,19 +70,26 @@ impl<'a> User<'a> {
         let mut following = self.following.borrow_mut();
 
         match following.contains(&user) {
-            true => println!("Already following {:?}", user),
+            true => println!("Already following {:?}", user.get_username()),
             false => following.push(user),
         };
     }
 
     pub fn follow_all(&self, users: Vec<UserRef<'a>>) {
-        users
-            .into_iter()
-            .for_each(|u| self.follow(u));
+        let mut following = self.following.borrow_mut();
+
+        for user in users {
+            match following.contains(&user) {
+                true => println!("Already following {:?}", user.get_username()),
+                false => following.push(user),
+            }
+        }
     }
 
     pub fn unfollow(&self, user: UserRef<'a>) {
         let mut following = self.following.borrow_mut();
+
+        //TODO Match if contains
 
         match following.iter().position(|&u| u == user) {
             None => println!("Not following: {:?}", user),
@@ -101,11 +108,36 @@ impl<'a> User<'a> {
 
 impl<'a> Debug for User<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("Username: {}\n", self.get_username()))?;
-        f.write_fmt(format_args!("Biography: {}\n", self.get_biography()))?;
-        f.write_fmt(format_args!("Followers: {}\n", self.get_follower_count()))?;
-        f.write_fmt(format_args!("Following: {}\n", self.get_following_count()))?;
+        f.write_str("{{\n")?;
+        f.write_fmt(format_args!("  Username: {}\n", self.get_username()))?;
+        f.write_fmt(format_args!("  Biography: {}\n", self.get_biography()))?;
+        f.write_fmt(format_args!("  Followers: {}\n", self.get_follower_count()))?;
+        f.write_fmt(format_args!("  Following: {}\n", self.get_following_count()))?;
+        f.write_str("}}\n")?;
 
         Ok(())
     }
 }
+
+#[macro_export]
+macro_rules! follow {
+    ($target:ident <= $($x:expr),+ $(,)?) => {
+        let new_followers = vec![$(&$x),+];
+        $target.follow_all(new_followers);
+    }
+}
+
+// fn main() {
+//     let a = User::new("User 1", "Bio 1");
+//     let b = User::new("User 2", "Bio 2");
+//     let c = User::new("User 3", "Bio 3");
+//     let d = User::new("User 4", "Bio 4");
+//     let e = User::new("User 5", "Bio 5");
+
+//     a.follow_all(vec![&b, &c, &d, &e]);
+//     b.follow_all(vec![&a, &c]);
+//     c.follow(&e);
+//     d.follow(&b);
+
+//     dbg!(&a);
+// }
